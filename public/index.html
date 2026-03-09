@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>デザインフィードバック — 一覧</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117; color: #e2e8f0; min-height: 100vh;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* Header */
+    header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 28px; background: #1a1d27;
+      border-bottom: 1px solid #2d3148; position: sticky; top: 0; z-index: 10;
+    }
+    header h1 { font-size: 15px; font-weight: 600; }
+    .badge { background: #3b5bdb; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+    .header-right { margin-left: auto; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 7px; font-size: 13px;
+      font-weight: 500; cursor: pointer; border: none; transition: background .15s;
+    }
+    .btn-primary { background: #3b5bdb; color: #fff; }
+    .btn-primary:hover { background: #4c6ef5; }
+    .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #2d3148; }
+    .btn-ghost:hover { background: #1e2235; color: #e2e8f0; }
+    .btn-icon {
+      width: 30px; height: 30px; border: none; background: transparent;
+      color: #64748b; cursor: pointer; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .1s, color .1s; font-size: 13px;
+    }
+    .btn-icon:hover { background: #2d3148; color: #e2e8f0; }
+    .btn-icon.danger:hover { background: #2a1616; color: #f87171; }
+
+    /* Main */
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .toolbar h2 { font-size: 20px; font-weight: 700; color: #f1f5f9; }
+    .toolbar-sub { font-size: 13px; color: #64748b; margin-top: 2px; }
+
+    /* Empty state */
+    .empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 16px; padding: 80px 20px; text-align: center;
+    }
+    .empty svg { color: #2d3148; }
+    .empty h3 { font-size: 18px; color: #f1f5f9; }
+    .empty p  { font-size: 14px; color: #64748b; }
+
+    /* Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    /* Card */
+    .card {
+      background: #1a1d27; border: 1px solid #2d3148; border-radius: 10px;
+      overflow: hidden; transition: border-color .15s, transform .15s;
+      cursor: pointer;
+    }
+    .card:hover { border-color: #3b5bdb; transform: translateY(-2px); }
+    .card-thumb {
+      width: 100%; aspect-ratio: 16/9; overflow: hidden;
+      background: #090b10; position: relative;
+    }
+    .card-thumb img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block; transition: opacity .2s;
+    }
+    .card-thumb .count-badge {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(59,91,219,.9); color: #fff;
+      font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+      backdrop-filter: blur(4px);
+    }
+    .card-body { padding: 14px 16px 12px; }
+    .card-title {
+      font-size: 14px; font-weight: 600; color: #f1f5f9;
+      margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-meta { font-size: 12px; color: #64748b; }
+    .card-actions {
+      display: flex; gap: 6px; padding: 0 12px 12px;
+      opacity: 0; transition: opacity .15s;
+    }
+    .card:hover .card-actions { opacity: 1; }
+    .card-actions .btn { padding: 5px 12px; font-size: 12px; }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.65);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; backdrop-filter: blur(4px);
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: #1a1d27; border: 1px solid #2d3148; border-radius: 14px;
+      padding: 28px; width: 480px; max-width: 95vw;
+      transform: translateY(12px) scale(.97); transition: transform .2s;
+    }
+    .modal-overlay.open .modal { transform: none; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .modal-header h3 { font-size: 16px; font-weight: 600; }
+    .modal-close { background: transparent; border: none; color: #64748b; font-size: 20px; cursor: pointer; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+    .modal-close:hover { color: #e2e8f0; background: #2d3148; }
+
+    /* Drop zone inside modal */
+    .drop-zone {
+      border: 2px dashed #2d3148; border-radius: 10px; padding: 36px 24px;
+      text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+      margin-bottom: 18px; position: relative;
+    }
+    .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .drop-zone.drag-over { border-color: #3b5bdb; background: #161d33; }
+    .drop-zone.has-image { border-color: #2f9e44; padding: 8px; }
+    .drop-zone.has-image img { width: 100%; max-height: 200px; object-fit: contain; border-radius: 6px; display: block; }
+    .drop-zone p { font-size: 13px; color: #64748b; margin-top: 10px; }
+    .drop-zone span { font-size: 13px; color: #94a3b8; font-weight: 500; }
+
+    label.field-label { display: block; font-size: 12px; color: #64748b; margin-bottom: 6px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+    input[type=text] {
+      width: 100%; background: #0f1117; border: 1px solid #2d3148; border-radius: 7px;
+      color: #e2e8f0; font-size: 14px; padding: 9px 12px; outline: none;
+      transition: border-color .15s; font-family: inherit;
+    }
+    input[type=text]:focus { border-color: #3b5bdb; }
+
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: #1e2235; border: 1px solid #3b5bdb;
+      color: #e2e8f0; padding: 8px 18px; border-radius: 8px;
+      font-size: 13px; opacity: 0; pointer-events: none;
+      transition: opacity .2s, transform .2s; z-index: 9999;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+<header>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b5bdb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </svg>
+  <h1>デザインフィードバック</h1>
+  <span class="badge">β</span>
+  <div class="header-right">
+    <button class="btn btn-primary" id="btn-new">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      新しいデザインを追加
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <div>
+      <h2>デザイン一覧</h2>
+      <p class="toolbar-sub" id="sub-text">読み込み中…</p>
+    </div>
+  </div>
+  <div id="gallery"></div>
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>新しいデザインを追加</h3>
+      <button class="modal-close" id="btn-modal-close">&times;</button>
+    </div>
+    <label class="field-label">デザイン画像</label>
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept="image/*" />
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3b5bdb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+      </svg>
+      <span>ドラッグ＆ドロップ</span>
+      <p>または クリックして選択（JPG / PNG / WebP）</p>
+    </div>
+    <label class="field-label" for="title-input">タイトル</label>
+    <input type="text" id="title-input" placeholder="例：LP v2 フィードバック" maxlength="80" />
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btn-modal-cancel">キャンセル</button>
+      <button class="btn btn-primary" id="btn-modal-submit" disabled>追加する</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ── State ──────────────────────────────────────────────
+  let selectedFile = null
+
+  // ── DOM ────────────────────────────────────────────────
+  const gallery       = document.getElementById('gallery')
+  const subText       = document.getElementById('sub-text')
+  const modalOverlay  = document.getElementById('modal-overlay')
+  const dropZone      = document.getElementById('drop-zone')
+  const fileInput     = document.getElementById('file-input')
+  const titleInput    = document.getElementById('title-input')
+  const btnSubmit     = document.getElementById('btn-modal-submit')
+
+  // ── Load ───────────────────────────────────────────────
+  async function loadSessions() {
+    try {
+      const sessions = await fetch('/api/sessions').then(r => r.json())
+      subText.textContent = `${sessions.length} 件`
+      if (sessions.length === 0) {
+        gallery.innerHTML = `
+          <div class="empty">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <h3>デザインがまだありません</h3>
+            <p>「新しいデザインを追加」からアップロードしてください</p>
+          </div>`
+      } else {
+        gallery.innerHTML = '<div class="grid"></div>'
+        const grid = gallery.querySelector('.grid')
+        sessions.forEach(s => grid.appendChild(buildCard(s)))
+      }
+    } catch {
+      subText.textContent = 'エラー'
+    }
+  }
+
+  // ── Card ───────────────────────────────────────────────
+  function buildCard(s) {
+    const card = document.createElement('div')
+    card.className = 'card'
+    const date = new Date(s.updatedAt)
+    const dateStr = `${date.getFullYear()}/${String(date.getMonth()+1).padStart(2,'0')}/${String(date.getDate()).padStart(2,'0')}`
+    card.innerHTML = `
+      <div class="card-thumb">
+        <img src="${s.imageUrl}" alt="${escHtml(s.title)}" loading="lazy" />
+        <span class="count-badge">${s.annotationCount} 件の指摘</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">${escHtml(s.title)}</div>
+        <div class="card-meta">更新日：${dateStr}</div>
+      </div>
+      <div class="card-actions">
+        <a class="btn btn-primary btn-edit" href="/editor.html?id=${s.id}">編集</a>
+        <button class="btn btn-ghost btn-share" data-id="${s.id}">リンクをコピー</button>
+        <button class="btn-icon danger btn-delete" data-id="${s.id}" title="削除">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+    `
+    card.querySelector('.card-thumb, .card-body').addEventListener('click', () => {
+      window.location.href = `/editor.html?id=${s.id}`
+    })
+    card.querySelector('.btn-share').addEventListener('click', e => {
+      e.stopPropagation()
+      copyShareLink(s.id)
+    })
+    card.querySelector('.btn-delete').addEventListener('click', e => {
+      e.stopPropagation()
+      deleteSession(s.id, card)
+    })
+    return card
+  }
+
+  async function deleteSession(id, card) {
+    if (!confirm('このデザインと指摘を削除しますか？')) return
+    await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
+    card.style.transition = 'opacity .2s'
+    card.style.opacity = '0'
+    setTimeout(() => { card.remove(); loadSessions() }, 200)
+    toast('削除しました')
+  }
+
+  function copyShareLink(id) {
+    const url = `${location.origin}/viewer.html?id=${id}`
+    navigator.clipboard.writeText(url).then(() => toast('共有リンクをコピーしました'))
+  }
+
+  // ── Modal ──────────────────────────────────────────────
+  function openModal() {
+    selectedFile = null
+    fileInput.value = ''
+    titleInput.value = ''
+    btnSubmit.disabled = true
+    resetDropZone()
+    modalOverlay.classList.add('open')
+    setTimeout(() => titleInput.focus(), 200)
+  }
+  function closeModal() { modalOverlay.classList.remove('open') }
+
+  function resetDropZone() {
+    dropZone.classList.remove('has-image', 'drag-over')
+    dropZone.innerHTML = `
+      <input type="file" id="file-input" accept="image/*" />
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3b5bdb" stroke-width="1.5" stroke-linecap="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+      </svg>
+      <span>ドラッグ＆ドロップ</span>
+      <p>または クリックして選択（JPG / PNG / WebP）</p>
+    `
+    dropZone.querySelector('input[type=file]').addEventListener('change', e => {
+      const f = e.target.files[0]; if (f) setFile(f)
+    })
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over') })
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'))
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault(); dropZone.classList.remove('drag-over')
+      const f = e.dataTransfer.files[0]; if (f && /^image\//.test(f.type)) setFile(f)
+    })
+  }
+
+  function setFile(file) {
+    selectedFile = file
+    btnSubmit.disabled = false
+    const reader = new FileReader()
+    reader.onload = ev => {
+      dropZone.classList.add('has-image')
+      dropZone.innerHTML = `<img src="${ev.target.result}" />`
+    }
+    reader.readAsDataURL(file)
+    if (!titleInput.value) {
+      titleInput.value = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')
+    }
+  }
+
+  document.getElementById('btn-new').addEventListener('click', openModal)
+  document.getElementById('btn-modal-close').addEventListener('click', closeModal)
+  document.getElementById('btn-modal-cancel').addEventListener('click', closeModal)
+  modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal() })
+
+  document.getElementById('btn-modal-submit').addEventListener('click', async () => {
+    if (!selectedFile) return
+    btnSubmit.disabled = true
+    btnSubmit.textContent = '送信中…'
+    const fd = new FormData()
+    fd.append('image', selectedFile)
+    fd.append('title', titleInput.value.trim() || '無題のデザイン')
+    try {
+      const session = await fetch('/api/sessions', { method: 'POST', body: fd }).then(r => r.json())
+      closeModal()
+      window.location.href = `/editor.html?id=${session.id}`
+    } catch {
+      toast('エラーが発生しました')
+      btnSubmit.disabled = false
+      btnSubmit.textContent = '追加する'
+    }
+  })
+
+  // Paste image support
+  document.addEventListener('paste', e => {
+    if (!modalOverlay.classList.contains('open')) return
+    const item = [...e.clipboardData.items].find(i => /^image\//.test(i.type))
+    if (item) setFile(item.getAsFile())
+  })
+
+  // ── Toast ──────────────────────────────────────────────
+  const toastEl = document.getElementById('toast')
+  let toastTimer
+  function toast(msg) {
+    toastEl.textContent = msg; toastEl.classList.add('show')
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2400)
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  }
+
+  // ── Init ───────────────────────────────────────────────
+  resetDropZone()
+  loadSessions()
+</script>
+</body>
+</html>
