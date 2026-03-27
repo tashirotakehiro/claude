@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express')
 const multer  = require('multer')
 const fs      = require('fs')
@@ -111,8 +112,13 @@ app.delete('/api/sessions/:id', (req, res) => {
   res.json({ ok: true })
 })
 
+// ── Agent Team Routes ────────────────────────────────
+const agentRoutes = require('./routes/agent-routes')
+app.use('/api/agent', agentRoutes)
+
 // ── Start ──────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n  Design Feedback Tool`)
-  console.log(`  http://localhost:${PORT}\n`)
+  console.log(`\n  Design Feedback Tool + EC商品企画AIチーム`)
+  console.log(`  http://localhost:${PORT}`)
+  console.log(`  http://localhost:${PORT}/agent.html\n`)
 })
