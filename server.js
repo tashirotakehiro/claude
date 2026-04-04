@@ -4,6 +4,10 @@ const multer  = require('multer')
 const fs      = require('fs')
 const path    = require('path')
 
+const http = require('http')
+const { WebSocketServer } = require('ws')
+const meetingManager = require('./meeting/meeting-manager')
+
 const app  = express()
 const PORT = process.env.PORT || 3000
 
@@ -116,9 +120,28 @@ app.delete('/api/sessions/:id', (req, res) => {
 const agentRoutes = require('./routes/agent-routes')
 app.use('/api/agent', agentRoutes)
 
+// ── Meeting Routes ────────────────────────────────
+const meetingRoutes = require('./routes/meeting-routes')
+app.use('/api/meetings', meetingRoutes)
+
+// ── HTTP + WebSocket Server ───────────────────────
+const server = http.createServer(app)
+const wss = new WebSocketServer({ server })
+
+wss.on('connection', (ws, req) => {
+  // Route: /ws/meeting/:meetingId
+  const match = req.url.match(/^\/ws\/meeting\/([^/?]+)/)
+  if (match) {
+    meetingManager.handleConnection(ws, match[1])
+  } else {
+    ws.close(4000, 'Unknown path')
+  }
+})
+
 // ── Start ──────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`\n  Design Feedback Tool + EC商品企画AIチーム`)
+server.listen(PORT, () => {
+  console.log(`\n  Design Feedback Tool + EC商品企画AIチーム + リアルタイム議事録`)
   console.log(`  http://localhost:${PORT}`)
-  console.log(`  http://localhost:${PORT}/agent.html\n`)
+  console.log(`  http://localhost:${PORT}/agent.html`)
+  console.log(`  http://localhost:${PORT}/meeting.html\n`)
 })

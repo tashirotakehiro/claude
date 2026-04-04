@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>リアルタイム議事録</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+/* ── Header ── */
+.header { background: #1e293b; border-bottom: 1px solid #334155; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+.header h1 { font-size: 18px; font-weight: 600; color: #f1f5f9; }
+.header-actions { display: flex; gap: 8px; }
+
+/* ── Buttons ── */
+.btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #3b82f6; color: #fff; }
+.btn-primary:hover { background: #2563eb; }
+.btn-danger { background: #ef4444; color: #fff; }
+.btn-danger:hover { background: #dc2626; }
+.btn-secondary { background: #334155; color: #e2e8f0; }
+.btn-secondary:hover { background: #475569; }
+.btn-success { background: #22c55e; color: #fff; }
+.btn-success:hover { background: #16a34a; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Views ── */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── Lobby (meeting list / create) ── */
+.lobby { max-width: 800px; margin: 40px auto; padding: 0 24px; }
+.lobby h2 { font-size: 24px; margin-bottom: 24px; }
+.create-form { background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 32px; }
+.create-form input { width: 100%; padding: 10px 14px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; font-size: 15px; margin-bottom: 12px; }
+.create-form input::placeholder { color: #64748b; }
+.meeting-list { display: flex; flex-direction: column; gap: 8px; }
+.meeting-card { background: #1e293b; border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; }
+.meeting-card:hover { background: #283548; }
+.meeting-card .title { font-weight: 600; }
+.meeting-card .meta { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+.meeting-card .status { font-size: 12px; padding: 3px 8px; border-radius: 999px; }
+.status-active { background: #22c55e22; color: #4ade80; }
+.status-ended { background: #64748b33; color: #94a3b8; }
+
+/* ── Setup (mic assignment) ── */
+.setup { max-width: 700px; margin: 40px auto; padding: 0 24px; }
+.setup h2 { margin-bottom: 8px; }
+.setup .sub { color: #94a3b8; margin-bottom: 24px; font-size: 14px; }
+.mode-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+.mode-tab { flex: 1; padding: 14px; text-align: center; background: #1e293b; border: 2px solid transparent; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+.mode-tab.active { border-color: #3b82f6; background: #1e3a5f; }
+.mode-tab h3 { font-size: 15px; margin-bottom: 4px; }
+.mode-tab p { font-size: 12px; color: #94a3b8; }
+
+.participant-setup { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.participant-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.participant-row input { flex: 1; padding: 8px 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-size: 14px; }
+.participant-row select { flex: 2; padding: 8px 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-size: 13px; }
+.participant-row .btn-remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px; padding: 4px 8px; }
+
+/* ── Meeting Room ── */
+.meeting-room { display: grid; grid-template-columns: 220px 1fr 320px; height: calc(100vh - 53px); }
+
+/* Left sidebar: participants */
+.sidebar-left { background: #1e293b; border-right: 1px solid #334155; padding: 16px; overflow-y: auto; }
+.sidebar-left h3 { font-size: 13px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+.participant-item { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; margin-bottom: 4px; font-size: 14px; }
+.participant-item .indicator { width: 8px; height: 8px; border-radius: 50%; background: #475569; flex-shrink: 0; }
+.participant-item .indicator.speaking { background: #22c55e; box-shadow: 0 0 8px #22c55e88; animation: pulse 1s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.recording-status { margin-top: 16px; padding: 12px; background: #0f172a; border-radius: 8px; text-align: center; }
+.recording-dot { display: inline-block; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; margin-right: 6px; animation: pulse 1s infinite; }
+
+/* Center: transcript */
+.main-content { display: flex; flex-direction: column; overflow: hidden; }
+.transcript-header { padding: 12px 20px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; }
+.transcript-header h3 { font-size: 15px; }
+.transcript-area { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.topic-section { margin-bottom: 20px; }
+.topic-title { font-size: 14px; font-weight: 600; color: #3b82f6; padding: 6px 0; border-bottom: 1px solid #1e3a5f; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.topic-title::before { content: '◆'; font-size: 10px; }
+
+.entry { display: flex; gap: 10px; padding: 6px 0; font-size: 14px; line-height: 1.5; border-bottom: 1px solid #1e293b; }
+.entry .time { color: #64748b; font-size: 11px; flex-shrink: 0; width: 48px; padding-top: 2px; }
+.entry .type-icon { flex-shrink: 0; width: 22px; text-align: center; font-size: 13px; padding-top: 1px; }
+.entry .speaker-name { font-weight: 600; color: #94a3b8; flex-shrink: 0; min-width: 60px; }
+.entry .text { color: #e2e8f0; flex: 1; }
+.entry.type-decision { background: #22c55e0a; }
+.entry.type-action_item { background: #f59e0b0a; }
+.entry.type-question { background: #8b5cf60a; }
+
+/* Live transcript (raw, before structuring) */
+.live-transcript { border-top: 1px solid #334155; padding: 12px 20px; background: #0f172a; max-height: 120px; overflow-y: auto; }
+.live-transcript h4 { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+.live-line { font-size: 13px; color: #94a3b8; padding: 2px 0; }
+.live-line .speaker { color: #60a5fa; font-weight: 500; }
+
+/* Right sidebar: summary */
+.sidebar-right { background: #1e293b; border-left: 1px solid #334155; overflow-y: auto; display: flex; flex-direction: column; }
+.sidebar-section { padding: 14px 16px; border-bottom: 1px solid #334155; }
+.sidebar-section h3 { font-size: 13px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.sidebar-section h3 .count { background: #3b82f6; color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 999px; }
+.summary-text { font-size: 13px; line-height: 1.6; color: #cbd5e1; }
+.summary-text:empty::after { content: '会議が進行すると、ここにリアルタイムで要約が表示されます...'; color: #475569; font-style: italic; }
+
+.action-item, .decision-item, .question-item { font-size: 13px; padding: 6px 0; border-bottom: 1px solid #0f172a; line-height: 1.4; }
+.action-item .assignee { color: #f59e0b; font-weight: 500; }
+.action-item .task { color: #e2e8f0; }
+.action-item .deadline { color: #64748b; font-size: 12px; }
+.decision-item { color: #4ade80; }
+.question-item { color: #a78bfa; }
+.keyword-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.keyword { background: #334155; color: #94a3b8; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+
+/* ── End screen ── */
+.end-screen { max-width: 900px; margin: 40px auto; padding: 0 24px; }
+.end-screen h2 { margin-bottom: 16px; }
+.final-summary { background: #1e293b; border-radius: 12px; padding: 24px; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+.final-summary h1, .final-summary h2, .final-summary h3 { color: #f1f5f9; margin: 16px 0 8px; }
+.final-summary h1 { font-size: 20px; }
+.final-summary h2 { font-size: 16px; }
+.final-summary ul { padding-left: 20px; }
+.final-summary table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.final-summary th, .final-summary td { border: 1px solid #334155; padding: 6px 10px; text-align: left; font-size: 13px; }
+.final-summary th { background: #0f172a; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .meeting-room { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+  .sidebar-left { display: none; }
+  .sidebar-right { max-height: 40vh; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<div class="header">
+  <h1>📝 リアルタイム議事録</h1>
+  <div class="header-actions" id="headerActions"></div>
+</div>
+
+<!-- ═══════════════════ VIEW: LOBBY ═══════════════════ -->
+<div class="view active" id="viewLobby">
+<div class="lobby">
+  <h2>会議一覧</h2>
+  <div class="create-form">
+    <input id="newMeetingTitle" type="text" placeholder="新しい会議のタイトルを入力...">
+    <button class="btn btn-primary" onclick="createMeeting()">会議を作成</button>
+  </div>
+  <div class="meeting-list" id="meetingList"></div>
+</div>
+</div>
+
+<!-- ═══════════════════ VIEW: SETUP ═══════════════════ -->
+<div class="view" id="viewSetup">
+<div class="setup">
+  <h2>会議セットアップ</h2>
+  <p class="sub" id="setupMeetingTitle"></p>
+
+  <div class="mode-tabs">
+    <div class="mode-tab active" data-mode="local" onclick="selectMode('local')">
+      <h3>🏢 対面モード</h3>
+      <p>1台のPCに複数マイクを接続</p>
+    </div>
+    <div class="mode-tab" data-mode="remote" onclick="selectMode('remote')">
+      <h3>🌐 リモートモード</h3>
+      <p>各自のPCから参加</p>
+    </div>
+  </div>
+
+  <!-- Local mode: assign multiple mics -->
+  <div id="localSetup">
+    <div class="participant-setup">
+      <h3 style="font-size:14px; margin-bottom:12px;">参加者とマイクの割り当て</h3>
+      <div id="participantRows"></div>
+      <button class="btn btn-secondary btn-sm" onclick="addParticipantRow()" style="margin-top:8px;">+ 参加者を追加</button>
+    </div>
+  </div>
+
+  <!-- Remote mode: just your name + mic -->
+  <div id="remoteSetup" style="display:none;">
+    <div class="participant-setup">
+      <h3 style="font-size:14px; margin-bottom:12px;">あなたの情報</h3>
+      <div class="participant-row">
+        <input id="remoteName" type="text" placeholder="あなたの名前">
+        <select id="remoteMic"></select>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-success" onclick="startMeeting()" style="width:100%; padding:12px; font-size:15px;">会議を開始する</button>
+</div>
+</div>
+
+<!-- ═══════════════════ VIEW: MEETING ROOM ═══════════════════ -->
+<div class="view" id="viewMeeting">
+<div class="meeting-room">
+  <!-- Left: participants -->
+  <div class="sidebar-left">
+    <h3>参加者</h3>
+    <div id="participantList"></div>
+    <div class="recording-status" id="recordingStatus">
+      <span class="recording-dot"></span> 録音中
+    </div>
+  </div>
+
+  <!-- Center: transcript -->
+  <div class="main-content">
+    <div class="transcript-header">
+      <h3 id="meetingTitle">会議</h3>
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-secondary btn-sm" onclick="exportMeeting()">📥 エクスポート</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmEndMeeting()">会議を終了</button>
+      </div>
+    </div>
+    <div class="transcript-area" id="transcriptArea"></div>
+    <div class="live-transcript" id="liveTranscript">
+      <h4>🎙️ リアルタイム文字起こし</h4>
+      <div id="liveLines"></div>
+    </div>
+  </div>
+
+  <!-- Right: summary & action items -->
+  <div class="sidebar-right">
+    <div class="sidebar-section">
+      <h3>📊 リアルタイム要約</h3>
+      <div class="summary-text" id="summaryText"></div>
+    </div>
+    <div class="sidebar-section">
+      <h3>✅ 決定事項 <span class="count" id="decisionCount">0</span></h3>
+      <div id="decisionList"></div>
+    </div>
+    <div class="sidebar-section">
+      <h3>📋 アクションアイテム <span class="count" id="actionCount">0</span></h3>
+      <div id="actionList"></div>
+    </div>
+    <div class="sidebar-section">
+      <h3>❓ 未解決事項 <span class="count" id="questionCount">0</span></h3>
+      <div id="questionList"></div>
+    </div>
+    <div class="sidebar-section">
+      <h3>🏷️ キーワード</h3>
+      <div class="keyword-list" id="keywordList"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════ VIEW: END SCREEN ═══════════════════ -->
+<div class="view" id="viewEnd">
+<div class="end-screen">
+  <h2>会議終了</h2>
+  <div style="margin-bottom:16px; display:flex; gap:8px;">
+    <button class="btn btn-primary" onclick="exportMeeting()">📥 Markdownでダウンロード</button>
+    <button class="btn btn-secondary" onclick="showView('viewLobby'); loadMeetings();">一覧に戻る</button>
+  </div>
+  <div class="final-summary" id="finalSummary"></div>
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  State
+// ══════════════════════════════════════════════════
+let currentMeetingId = null
+let currentMode = 'local' // 'local' or 'remote'
+let ws = null
+let audioDevices = []
+let recognizers = [] // { name, recognition, stream }
+let speakingStates = {} // name -> boolean
+
+// ══════════════════════════════════════════════════
+//  View management
+// ══════════════════════════════════════════════════
+function showView(viewId) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'))
+  document.getElementById(viewId).classList.add('active')
+
+  // Update header actions
+  const actions = document.getElementById('headerActions')
+  if (viewId === 'viewMeeting') {
+    actions.innerHTML = ''
+  } else if (viewId === 'viewLobby') {
+    actions.innerHTML = ''
+  } else {
+    actions.innerHTML = ''
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  Lobby: meeting list
+// ══════════════════════════════════════════════════
+async function loadMeetings() {
+  try {
+    const res = await fetch('/api/meetings')
+    const meetings = await res.json()
+    const list = document.getElementById('meetingList')
+
+    if (meetings.length === 0) {
+      list.innerHTML = '<p style="color:#64748b; text-align:center; padding:20px;">まだ会議がありません</p>'
+      return
+    }
+
+    list.innerHTML = meetings.map(m => `
+      <div class="meeting-card" onclick="openMeeting('${m.id}')">
+        <div>
+          <div class="title">${esc(m.title)}</div>
+          <div class="meta">${new Date(m.startedAt).toLocaleString('ja-JP')} · 参加者 ${m.participantCount}人</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="status ${m.status === 'active' ? 'status-active' : 'status-ended'}">${m.status === 'active' ? '進行中' : '終了'}</span>
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); deleteMeeting('${m.id}')">削除</button>
+        </div>
+      </div>
+    `).join('')
+  } catch (err) {
+    console.error('Failed to load meetings:', err)
+  }
+}
+
+async function createMeeting() {
+  const title = document.getElementById('newMeetingTitle').value.trim()
+  const res = await fetch('/api/meetings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  })
+  const meeting = await res.json()
+  currentMeetingId = meeting.id
+  document.getElementById('newMeetingTitle').value = ''
+  openSetup(meeting)
+}
+
+async function deleteMeeting(id) {
+  if (!confirm('この会議を削除しますか？')) return
+  await fetch(`/api/meetings/${id}`, { method: 'DELETE' })
+  loadMeetings()
+}
+
+function openMeeting(id) {
+  currentMeetingId = id
+  // Check if meeting is active or ended
+  fetch(`/api/meetings/${id}`).then(r => r.json()).then(meeting => {
+    if (meeting.status === 'active') {
+      openSetup(meeting)
+    } else {
+      showEndScreen(meeting)
+    }
+  })
+}
+
+// ══════════════════════════════════════════════════
+//  Setup: mic assignment
+// ══════════════════════════════════════════════════
+async function openSetup(meeting) {
+  document.getElementById('setupMeetingTitle').textContent = meeting.title
+  showView('viewSetup')
+  await loadAudioDevices()
+  addParticipantRow()
+}
+
+function selectMode(mode) {
+  currentMode = mode
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode))
+  document.getElementById('localSetup').style.display = mode === 'local' ? 'block' : 'none'
+  document.getElementById('remoteSetup').style.display = mode === 'remote' ? 'block' : 'none'
+}
+
+async function loadAudioDevices() {
+  try {
+    // Request permission first
+    await navigator.mediaDevices.getUserMedia({ audio: true })
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    audioDevices = devices.filter(d => d.kind === 'audioinput')
+    updateDeviceSelects()
+  } catch (err) {
+    console.error('Failed to enumerate devices:', err)
+    alert('マイクへのアクセスを許可してください。')
+  }
+}
+
+function updateDeviceSelects() {
+  const optionsHtml = audioDevices.map((d, i) =>
+    `<option value="${d.deviceId}">${d.label || 'マイク ' + (i + 1)}</option>`
+  ).join('')
+
+  // Update all participant selects
+  document.querySelectorAll('.mic-select').forEach(sel => {
+    const current = sel.value
+    sel.innerHTML = optionsHtml
+    if (current) sel.value = current
+  })
+
+  // Update remote mic select
+  const remoteMic = document.getElementById('remoteMic')
+  if (remoteMic) remoteMic.innerHTML = optionsHtml
+}
+
+function addParticipantRow() {
+  const container = document.getElementById('participantRows')
+  const idx = container.children.length + 1
+  const row = document.createElement('div')
+  row.className = 'participant-row'
+  row.innerHTML = `
+    <input type="text" class="participant-name" placeholder="参加者${idx}の名前">
+    <select class="mic-select"></select>
+    <button class="btn-remove" onclick="this.parentElement.remove()">×</button>
+  `
+  container.appendChild(row)
+  updateDeviceSelects()
+}
+
+// ══════════════════════════════════════════════════
+//  Start meeting: connect WebSocket + start recognition
+// ══════════════════════════════════════════════════
+function startMeeting() {
+  if (currentMode === 'local') {
+    startLocalMeeting()
+  } else {
+    startRemoteMeeting()
+  }
+}
+
+function startLocalMeeting() {
+  const rows = document.querySelectorAll('#participantRows .participant-row')
+  const participants = []
+  rows.forEach(row => {
+    const name = row.querySelector('.participant-name').value.trim()
+    const deviceId = row.querySelector('.mic-select').value
+    if (name) participants.push({ name, deviceId })
+  })
+
+  if (participants.length === 0) {
+    alert('少なくとも1人の参加者を追加してください。')
+    return
+  }
+
+  connectWebSocket(() => {
+    // Register all local participants
+    ws.send(JSON.stringify({
+      type: 'join-local-participants',
+      participants: participants.map(p => ({ name: p.name, deviceId: p.deviceId })),
+    }))
+
+    // Start speech recognition for each participant
+    for (const p of participants) {
+      startRecognitionForDevice(p.name, p.deviceId)
+    }
+  })
+
+  showMeetingView()
+}
+
+function startRemoteMeeting() {
+  const name = document.getElementById('remoteName').value.trim()
+  const deviceId = document.getElementById('remoteMic').value
+
+  if (!name) {
+    alert('名前を入力してください。')
+    return
+  }
+
+  connectWebSocket(() => {
+    ws.send(JSON.stringify({ type: 'join', name, deviceId, mode: 'remote' }))
+    startRecognitionForDevice(name, deviceId)
+  })
+
+  showMeetingView()
+}
+
+function showMeetingView() {
+  showView('viewMeeting')
+}
+
+// ══════════════════════════════════════════════════
+//  WebSocket connection
+// ══════════════════════════════════════════════════
+function connectWebSocket(onOpen) {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  ws = new WebSocket(`${protocol}//${location.host}/ws/meeting/${currentMeetingId}`)
+
+  ws.onopen = () => {
+    console.log('[WS] Connected')
+    if (onOpen) onOpen()
+  }
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data)
+    handleWSMessage(msg)
+  }
+
+  ws.onclose = () => {
+    console.log('[WS] Disconnected')
+    // Try reconnect after 3s
+    setTimeout(() => {
+      if (currentMeetingId && document.getElementById('viewMeeting').classList.contains('active')) {
+        connectWebSocket()
+      }
+    }, 3000)
+  }
+
+  ws.onerror = (err) => {
+    console.error('[WS] Error:', err)
+  }
+}
+
+function handleWSMessage(msg) {
+  switch (msg.type) {
+    case 'init':
+      renderMeetingState(msg.meeting)
+      break
+    case 'participant-joined':
+    case 'participants-updated':
+      renderParticipants(msg.participants)
+      break
+    case 'transcript-raw':
+      addLiveLine(msg.speaker, msg.text)
+      break
+    case 'structured-update':
+      renderStructuredData(msg)
+      break
+    case 'speaking':
+      updateSpeakingState(msg.speaker, msg.isSpeaking)
+      break
+    case 'meeting-ended':
+      showEndScreen(msg.meeting)
+      break
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  Speech Recognition per device
+// ══════════════════════════════════════════════════
+async function startRecognitionForDevice(speakerName, deviceId) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SpeechRecognition) {
+    alert('このブラウザはWeb Speech APIに対応していません。Chrome/Edgeをお使いください。')
+    return
+  }
+
+  // Get audio stream for this specific device
+  let stream
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { deviceId: deviceId ? { exact: deviceId } : undefined }
+    })
+  } catch (err) {
+    console.error(`[Mic] Failed to access device ${deviceId}:`, err)
+    alert(`マイク「${speakerName}」へのアクセスに失敗しました。`)
+    return
+  }
+
+  const recognition = new SpeechRecognition()
+  recognition.lang = 'ja-JP'
+  recognition.continuous = true
+  recognition.interimResults = true
+  recognition.maxAlternatives = 1
+
+  let finalTranscript = ''
+  let isRestarting = false
+
+  recognition.onresult = (event) => {
+    let interim = ''
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript
+      } else {
+        interim += transcript
+      }
+    }
+
+    // Update speaking state
+    if (interim || finalTranscript) {
+      if (!speakingStates[speakerName]) {
+        speakingStates[speakerName] = true
+        if (ws && ws.readyState === 1) {
+          ws.send(JSON.stringify({ type: 'speaking', speaker: speakerName, isSpeaking: true }))
+        }
+      }
+    }
+
+    // Send final transcript
+    if (finalTranscript) {
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({
+          type: 'transcript',
+          speaker: speakerName,
+          text: finalTranscript,
+          timestamp: new Date().toISOString(),
+        }))
+      }
+      finalTranscript = ''
+    }
+
+    // Show interim in live area
+    if (interim) {
+      updateLiveInterim(speakerName, interim)
+    }
+  }
+
+  recognition.onspeechend = () => {
+    speakingStates[speakerName] = false
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({ type: 'speaking', speaker: speakerName, isSpeaking: false }))
+    }
+  }
+
+  recognition.onend = () => {
+    // Auto-restart (Web Speech API stops after silence)
+    if (!isRestarting) {
+      isRestarting = true
+      setTimeout(() => {
+        isRestarting = false
+        try { recognition.start() } catch (e) { /* ignore */ }
+      }, 100)
+    }
+  }
+
+  recognition.onerror = (event) => {
+    if (event.error === 'no-speech' || event.error === 'aborted') return
+    console.error(`[Recognition] Error for ${speakerName}:`, event.error)
+  }
+
+  try {
+    recognition.start()
+  } catch (e) {
+    console.error(`[Recognition] Failed to start for ${speakerName}:`, e)
+  }
+
+  recognizers.push({ name: speakerName, recognition, stream })
+}
+
+function stopAllRecognizers() {
+  for (const r of recognizers) {
+    try { r.recognition.stop() } catch (e) { /* ignore */ }
+    if (r.stream) {
+      r.stream.getTracks().forEach(t => t.stop())
+    }
+  }
+  recognizers = []
+}
+
+// ══════════════════════════════════════════════════
+//  Rendering
+// ══════════════════════════════════════════════════
+function renderMeetingState(meeting) {
+  document.getElementById('meetingTitle').textContent = meeting.title
+  renderParticipants(meeting.participants)
+
+  if (meeting.topics || meeting.actionItems || meeting.decisions) {
+    renderStructuredData({
+      topics: meeting.topics || [],
+      actionItems: meeting.actionItems || [],
+      decisions: meeting.decisions || [],
+      openQuestions: meeting.openQuestions || [],
+      summary: meeting.summary || '',
+      keywords: meeting.keywords || [],
+    })
+  }
+}
+
+function renderParticipants(participants) {
+  const list = document.getElementById('participantList')
+  list.innerHTML = (participants || []).map(p => `
+    <div class="participant-item" data-name="${esc(p.name)}">
+      <span class="indicator" id="speaking-${esc(p.name)}"></span>
+      <span>${esc(p.name)}</span>
+      <span style="font-size:11px;color:#64748b;">${p.mode === 'local' ? '🏢' : '🌐'}</span>
+    </div>
+  `).join('')
+}
+
+function updateSpeakingState(speaker, isSpeaking) {
+  const el = document.getElementById(`speaking-${speaker}`)
+  if (el) el.classList.toggle('speaking', isSpeaking)
+}
+
+function addLiveLine(speaker, text) {
+  const container = document.getElementById('liveLines')
+  const line = document.createElement('div')
+  line.className = 'live-line'
+  line.innerHTML = `<span class="speaker">${esc(speaker)}:</span> ${esc(text)}`
+  container.appendChild(line)
+  // Keep only last 10 lines
+  while (container.children.length > 10) container.firstChild.remove()
+  container.scrollTop = container.scrollHeight
+}
+
+function updateLiveInterim(speaker, text) {
+  let el = document.getElementById(`interim-${speaker}`)
+  const container = document.getElementById('liveLines')
+  if (!el) {
+    el = document.createElement('div')
+    el.id = `interim-${speaker}`
+    el.className = 'live-line'
+    container.appendChild(el)
+  }
+  el.innerHTML = `<span class="speaker">${esc(speaker)}:</span> <span style="opacity:0.5">${esc(text)}</span>`
+  container.scrollTop = container.scrollHeight
+}
+
+function renderStructuredData(data) {
+  // Topics & entries
+  const area = document.getElementById('transcriptArea')
+  area.innerHTML = ''
+  for (const topic of (data.topics || [])) {
+    const section = document.createElement('div')
+    section.className = 'topic-section'
+    section.innerHTML = `<div class="topic-title">${esc(topic.title)}</div>`
+    for (const entry of (topic.entries || [])) {
+      const time = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : ''
+      const icon = { discussion: '💬', decision: '✅', action_item: '📋', question: '❓', info: 'ℹ️' }[entry.type] || '💬'
+      const div = document.createElement('div')
+      div.className = `entry type-${entry.type}`
+      div.innerHTML = `
+        <span class="time">${time}</span>
+        <span class="type-icon">${icon}</span>
+        <span class="speaker-name">${esc(entry.speaker)}</span>
+        <span class="text">${esc(entry.structuredText || entry.rawText)}</span>
+      `
+      section.appendChild(div)
+    }
+    area.appendChild(section)
+  }
+  area.scrollTop = area.scrollHeight
+
+  // Summary
+  document.getElementById('summaryText').textContent = data.summary || ''
+
+  // Decisions
+  const decList = document.getElementById('decisionList')
+  const decisions = data.decisions || []
+  document.getElementById('decisionCount').textContent = decisions.length
+  decList.innerHTML = decisions.map(d => `<div class="decision-item">✅ ${esc(d.content)}</div>`).join('')
+
+  // Action items
+  const actList = document.getElementById('actionList')
+  const actions = data.actionItems || []
+  document.getElementById('actionCount').textContent = actions.length
+  actList.innerHTML = actions.map(a => `
+    <div class="action-item">
+      <div><span class="assignee">${esc(a.assignee)}</span>: <span class="task">${esc(a.task)}</span></div>
+      ${a.deadline ? `<div class="deadline">期限: ${esc(a.deadline)}</div>` : ''}
+    </div>
+  `).join('')
+
+  // Open questions
+  const qList = document.getElementById('questionList')
+  const questions = data.openQuestions || []
+  document.getElementById('questionCount').textContent = questions.length
+  qList.innerHTML = questions.map(q => `<div class="question-item">❓ ${esc(q.content)} (${esc(q.askedBy)})</div>`).join('')
+
+  // Keywords
+  const kwList = document.getElementById('keywordList')
+  kwList.innerHTML = (data.keywords || []).map(k => `<span class="keyword">${esc(k)}</span>`).join('')
+}
+
+// ══════════════════════════════════════════════════
+//  Meeting controls
+// ══════════════════════════════════════════════════
+function confirmEndMeeting() {
+  if (!confirm('会議を終了しますか？最終サマリーが生成されます。')) return
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({ type: 'end-meeting' }))
+  }
+  stopAllRecognizers()
+}
+
+function showEndScreen(meeting) {
+  showView('viewEnd')
+  const summary = meeting.finalSummary || meeting.summary || '要約はありません'
+  document.getElementById('finalSummary').innerHTML = renderMarkdown(summary)
+}
+
+async function exportMeeting() {
+  if (!currentMeetingId) return
+  try {
+    const res = await fetch(`/api/meetings/${currentMeetingId}/export`)
+    const text = await res.text()
+    const blob = new Blob([text], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `meeting-${currentMeetingId}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('Export failed:', err)
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  Utilities
+// ══════════════════════════════════════════════════
+function esc(s) {
+  if (!s) return ''
+  const div = document.createElement('div')
+  div.textContent = s
+  return div.innerHTML
+}
+
+function renderMarkdown(text) {
+  if (!text) return ''
+  return text
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^\- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+    .replace(/\n/g, '<br>')
+}
+
+// ══════════════════════════════════════════════════
+//  Init
+// ══════════════════════════════════════════════════
+loadMeetings()
+</script>
+</body>
+</html>
