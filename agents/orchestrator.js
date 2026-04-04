@@ -12,6 +12,7 @@ const { COMPETITIVE_ANALYSIS_PROMPT } = require('./prompts/competitive-analysis'
 const { FINANCIAL_VIABILITY_PROMPT } = require('./prompts/financial-viability')
 const { SNS_TREND_PROMPT } = require('./prompts/sns-trend')
 const { REVIEW_ANALYSIS_PROMPT } = require('./prompts/review-analysis')
+const { AI_MARKET_RESEARCH_GUIDE_PROMPT } = require('./prompts/ai-market-research-guide')
 
 const AGENTS = {
   'team-leader':           { name: 'チームリーダー',           color: '#3b5bdb', prompt: TEAM_LEADER_PROMPT },
@@ -24,6 +25,7 @@ const AGENTS = {
   'financial-viability':   { name: '収益性分析担当',           color: '#d6336c', prompt: FINANCIAL_VIABILITY_PROMPT },
   'sns-trend':             { name: 'SNSトレンド分析担当',      color: '#ae3ec9', prompt: SNS_TREND_PROMPT },
   'review-analysis':       { name: 'レビュー分析担当',         color: '#0ca678', prompt: REVIEW_ANALYSIS_PROMPT },
+  'ai-market-research-guide': { name: 'AI市場リサーチガイド担当', color: '#e8590c', prompt: AI_MARKET_RESEARCH_GUIDE_PROMPT },
 }
 
 function buildSystemPrompt(agentId) {

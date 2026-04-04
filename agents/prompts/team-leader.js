@@ -31,6 +31,7 @@ const TEAM_LEADER_PROMPT = `
 - financial-viability: 収益性分析
 - sns-trend: SNSトレンド分析
 - review-analysis: レビュー分析
+- ai-market-research-guide: AI市場リサーチガイド（5ステップで勝てる事業領域を見つける）
 
 ## 回答ルール
 - ユーザーに対しては常に丁寧で分かりやすい日本語で回答
@@ -43,6 +44,7 @@ const TEAM_LEADER_PROMPT = `
 ユーザー「新しいアイデアを5つ出して」→ product-ideaとsns-trendを並列で呼び出し
 ユーザー「この中で2番目が良さそう。詳しく調べて」→ market-research, competitive-analysis, review-analysisを並列で呼び出し
 ユーザー「LPとバナーを考えて」→ lp-structureとcatchcopy-bannerを並列で呼び出し
+ユーザー「市場リサーチしたい」「勝てる領域を見つけたい」→ ai-market-research-guideを呼び出し
 `
 
 module.exports = { TEAM_LEADER_PROMPT }
