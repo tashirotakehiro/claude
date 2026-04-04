@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNS広告バナー自動生成</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f0f23;
+    color: #e0e0e0;
+    min-height: 100vh;
+  }
+
+  .header {
+    background: #1a1a35;
+    border-bottom: 1px solid #2a2a4a;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header h1 { font-size: 20px; color: #fff; }
+  .header .badge {
+    background: #f59f00;
+    color: #000;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+  }
+
+  .main {
+    display: flex;
+    height: calc(100vh - 57px);
+  }
+
+  /* ── Left Panel: Input Form ── */
+  .input-panel {
+    width: 380px;
+    min-width: 380px;
+    background: #1a1a35;
+    border-right: 1px solid #2a2a4a;
+    padding: 24px;
+    overflow-y: auto;
+  }
+  .input-panel h2 {
+    font-size: 16px;
+    color: #f59f00;
+    margin-bottom: 20px;
+  }
+  .form-group {
+    margin-bottom: 16px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    color: #aaa;
+    margin-bottom: 6px;
+  }
+  .form-group input,
+  .form-group textarea {
+    width: 100%;
+    background: #0f0f23;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #e0e0e0;
+    font-size: 14px;
+    resize: vertical;
+  }
+  .form-group input:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #f59f00;
+  }
+  .form-group textarea { min-height: 60px; }
+
+  .image-upload-area {
+    border: 2px dashed #2a2a4a;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .image-upload-area:hover { border-color: #f59f00; }
+  .image-upload-area.has-image { border-style: solid; border-color: #f59f0066; }
+  .image-upload-area img {
+    max-width: 100%;
+    max-height: 150px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .image-upload-area p { font-size: 12px; color: #888; }
+
+  .generate-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #f59f00, #e67700);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: transform 0.1s;
+  }
+  .generate-btn:hover { transform: scale(1.02); }
+  .generate-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ── Right Panel: Gallery ── */
+  .gallery-panel {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  /* Progress */
+  .progress-section {
+    display: none;
+    margin-bottom: 24px;
+  }
+  .progress-section.active { display: block; }
+  .progress-bar-container {
+    background: #1a1a35;
+    border-radius: 8px;
+    height: 36px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #f59f00, #e67700);
+    transition: width 0.3s;
+    width: 0%;
+  }
+  .progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+  }
+  .status-text {
+    font-size: 13px;
+    color: #aaa;
+    margin-bottom: 8px;
+  }
+
+  /* Filters */
+  .filter-bar {
+    display: none;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .filter-bar.active { display: flex; }
+  .filter-btn {
+    padding: 6px 14px;
+    background: #1a1a35;
+    border: 1px solid #2a2a4a;
+    border-radius: 20px;
+    color: #aaa;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .filter-btn.active {
+    background: #f59f0033;
+    border-color: #f59f00;
+    color: #f59f00;
+  }
+
+  .download-bar {
+    display: none;
+    margin-bottom: 16px;
+  }
+  .download-bar.active { display: block; }
+  .download-btn {
+    padding: 10px 24px;
+    background: #2a2a4a;
+    border: 1px solid #3a3a5a;
+    border-radius: 8px;
+    color: #e0e0e0;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .download-btn:hover { background: #3a3a5a; }
+
+  /* Banner Grid */
+  .banner-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .banner-card {
+    background: #1a1a35;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .banner-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .banner-card img {
+    width: 100%;
+    display: block;
+  }
+  .banner-card .card-info {
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .banner-card .card-info .template-tag {
+    font-size: 11px;
+    background: #2a2a4a;
+    padding: 2px 8px;
+    border-radius: 10px;
+    color: #aaa;
+  }
+  .banner-card .card-info .size-tag {
+    font-size: 11px;
+    color: #666;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 100px 20px;
+    color: #555;
+  }
+  .empty-state h3 { font-size: 18px; margin-bottom: 8px; color: #777; }
+  .empty-state p { font-size: 14px; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-content {
+    max-width: 90vw;
+    max-height: 90vh;
+    position: relative;
+  }
+  .modal-content img {
+    max-width: 100%;
+    max-height: 85vh;
+    border-radius: 8px;
+  }
+  .modal-info {
+    color: #ccc;
+    font-size: 13px;
+    margin-top: 12px;
+    text-align: center;
+  }
+  .modal-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 28px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>SNS広告バナー自動生成</h1>
+  <span class="badge">AI Powered</span>
+</div>
+
+<div class="main">
+  <!-- Left: Input Form -->
+  <div class="input-panel">
+    <h2>商品情報を入力</h2>
+
+    <div class="form-group">
+      <label>商品説明</label>
+      <textarea id="productDescription" placeholder="例: 首が温まる新発想の枕。遠赤外線素材を使用し..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>ベネフィット</label>
+      <textarea id="benefits" placeholder="例: 肩こり解消、睡眠の質向上、朝スッキリ目覚める"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>おすすめキャッチコピー案</label>
+      <input type="text" id="suggestedCatchcopy" placeholder="例: 寝ている間に肩こりが消える">
+    </div>
+
+    <div class="form-group">
+      <label>ターゲットイメージ</label>
+      <input type="text" id="targetAudience" placeholder="例: 30-50代の肩こりに悩む女性">
+    </div>
+
+    <div class="form-group">
+      <label>商品画像</label>
+      <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('imageInput').click()">
+        <p>クリックして画像をアップロード</p>
+        <p>または下のURLを入力</p>
+      </div>
+      <input type="file" id="imageInput" accept="image/*" style="display:none">
+      <input type="text" id="productImageUrl" placeholder="画像URLを入力（任意）" style="margin-top: 8px;">
+    </div>
+
+    <button class="generate-btn" id="generateBtn" onclick="generateBanners()">
+      バナー50枚を生成
+    </button>
+  </div>
+
+  <!-- Right: Gallery -->
+  <div class="gallery-panel">
+    <div class="progress-section" id="progressSection">
+      <div class="status-text" id="statusText">準備中...</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progressBar"></div>
+        <div class="progress-text" id="progressText">0%</div>
+      </div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+      <button class="filter-btn active" data-filter="all" onclick="filterBanners('all', this)">すべて</button>
+      <button class="filter-btn" data-filter="1080x1080" onclick="filterBanners('1080x1080', this)">1080x1080</button>
+      <button class="filter-btn" data-filter="1080x1920" onclick="filterBanners('1080x1920', this)">1080x1920</button>
+      <button class="filter-btn" data-filter="1200x628" onclick="filterBanners('1200x628', this)">1200x628</button>
+      <span style="width:20px"></span>
+      <button class="filter-btn" data-filter="t:before-after" onclick="filterBanners('t:before-after', this)">Before/After</button>
+      <button class="filter-btn" data-filter="t:big-benefit" onclick="filterBanners('t:big-benefit', this)">Big Benefit</button>
+      <button class="filter-btn" data-filter="t:testimonial" onclick="filterBanners('t:testimonial', this)">口コミ</button>
+      <button class="filter-btn" data-filter="t:urgency" onclick="filterBanners('t:urgency', this)">緊急性</button>
+      <button class="filter-btn" data-filter="t:problem-agitation" onclick="filterBanners('t:problem-agitation', this)">悩み煽り</button>
+      <button class="filter-btn" data-filter="t:number-stats" onclick="filterBanners('t:number-stats', this)">数字実績</button>
+      <button class="filter-btn" data-filter="t:minimal-premium" onclick="filterBanners('t:minimal-premium', this)">ミニマル</button>
+      <button class="filter-btn" data-filter="t:magazine" onclick="filterBanners('t:magazine', this)">雑誌風</button>
+      <button class="filter-btn" data-filter="t:ugc-style" onclick="filterBanners('t:ugc-style', this)">UGC風</button>
+      <button class="filter-btn" data-filter="t:comparison" onclick="filterBanners('t:comparison', this)">比較</button>
+    </div>
+
+    <div class="download-bar" id="downloadBar">
+      <button class="download-btn" id="downloadBtn" onclick="downloadZip()">ZIP一括ダウンロード</button>
+    </div>
+
+    <div class="banner-grid" id="bannerGrid">
+      <div class="empty-state" id="emptyState">
+        <h3>左の入力フォームから開始</h3>
+        <p>商品情報を入力して「バナー50枚を生成」をクリック</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <img id="modalImg" src="">
+    <div class="modal-info" id="modalInfo"></div>
+  </div>
+</div>
+
+<script>
+  let currentJobId = null
+  let allBanners = []
+  let currentFilter = 'all'
+
+  // Image upload preview
+  const imageInput = document.getElementById('imageInput')
+  const uploadArea = document.getElementById('imageUploadArea')
+
+  imageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    uploadArea.classList.add('has-image')
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      uploadArea.innerHTML = `<img src="${ev.target.result}"><p>${file.name}</p>`
+    }
+    reader.readAsDataURL(file)
+  })
+
+  async function generateBanners() {
+    const btn = document.getElementById('generateBtn')
+    btn.disabled = true
+    btn.textContent = '生成中...'
+
+    const progressSection = document.getElementById('progressSection')
+    const filterBar = document.getElementById('filterBar')
+    const downloadBar = document.getElementById('downloadBar')
+    progressSection.classList.add('active')
+    filterBar.classList.remove('active')
+    downloadBar.classList.remove('active')
+    document.getElementById('bannerGrid').innerHTML = ''
+    document.getElementById('progressBar').style.width = '0%'
+    document.getElementById('progressText').textContent = '0%'
+
+    // Build form data
+    const formData = new FormData()
+    formData.append('productDescription', document.getElementById('productDescription').value)
+    formData.append('benefits', document.getElementById('benefits').value)
+    formData.append('suggestedCatchcopy', document.getElementById('suggestedCatchcopy').value)
+    formData.append('targetAudience', document.getElementById('targetAudience').value)
+
+    const imageFile = imageInput.files[0]
+    const imageUrl = document.getElementById('productImageUrl').value.trim()
+
+    if (imageFile) {
+      formData.append('productImage', imageFile)
+    } else if (imageUrl) {
+      formData.append('productImageUrl', imageUrl)
+    } else {
+      alert('商品画像をアップロードするかURLを入力してください')
+      btn.disabled = false
+      btn.textContent = 'バナー50枚を生成'
+      progressSection.classList.remove('active')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/banners/generate', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        let eventType = ''
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventType = line.slice(7).trim()
+          } else if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6))
+            handleSSE(eventType, data)
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err)
+      document.getElementById('statusText').textContent = 'エラーが発生しました: ' + err.message
+    }
+
+    btn.disabled = false
+    btn.textContent = 'バナー50枚を生成'
+  }
+
+  function handleSSE(event, data) {
+    const statusText = document.getElementById('statusText')
+    const progressBar = document.getElementById('progressBar')
+    const progressText = document.getElementById('progressText')
+
+    switch (event) {
+      case 'status':
+        statusText.textContent = data.message
+        break
+
+      case 'matrix-ready':
+        statusText.textContent = `${data.count}パターンのマトリクス生成完了。レンダリング中...`
+        break
+
+      case 'progress': {
+        const pct = Math.round((data.completed / data.total) * 100)
+        progressBar.style.width = pct + '%'
+        progressText.textContent = `${data.completed}/${data.total}`
+        statusText.textContent = `レンダリング中... (${data.completed}/${data.total})`
+        break
+      }
+
+      case 'done': {
+        currentJobId = data.jobId
+        allBanners = data.banners
+        statusText.textContent = `完了！${data.bannerCount}枚のバナーを生成しました`
+        progressBar.style.width = '100%'
+        progressText.textContent = '100%'
+
+        document.getElementById('filterBar').classList.add('active')
+        document.getElementById('downloadBar').classList.add('active')
+        renderGallery(allBanners)
+
+        setTimeout(() => {
+          document.getElementById('progressSection').classList.remove('active')
+        }, 2000)
+        break
+      }
+
+      case 'error':
+        statusText.textContent = 'エラー: ' + data.message
+        break
+    }
+  }
+
+  function renderGallery(banners) {
+    const grid = document.getElementById('bannerGrid')
+    grid.innerHTML = ''
+
+    const filtered = banners.filter(b => {
+      if (!b.filename) return false
+      if (currentFilter === 'all') return true
+      if (currentFilter.startsWith('t:')) return b.template === currentFilter.slice(2)
+      return b.size === currentFilter
+    })
+
+    if (filtered.length === 0) {
+      grid.innerHTML = '<div class="empty-state"><h3>該当するバナーがありません</h3></div>'
+      return
+    }
+
+    for (const banner of filtered) {
+      const card = document.createElement('div')
+      card.className = 'banner-card'
+      card.onclick = () => openModal(banner)
+      card.innerHTML = `
+        <img src="/api/banners/jobs/${currentJobId}/${banner.filename}" loading="lazy">
+        <div class="card-info">
+          <span class="template-tag">${banner.template}</span>
+          <span class="size-tag">${banner.size}</span>
+        </div>
+      `
+      grid.appendChild(card)
+    }
+  }
+
+  function filterBanners(filter, btn) {
+    currentFilter = filter
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'))
+    if (btn) btn.classList.add('active')
+    renderGallery(allBanners)
+  }
+
+  function openModal(banner) {
+    const modal = document.getElementById('modal')
+    const img = document.getElementById('modalImg')
+    const info = document.getElementById('modalInfo')
+    img.src = `/api/banners/jobs/${currentJobId}/${banner.filename}`
+    info.textContent = `${banner.template} | ${banner.size} | ${banner.headline || ''}`
+    modal.classList.add('active')
+  }
+
+  function closeModal(e) {
+    if (e && e.target !== e.currentTarget && !e.target.classList.contains('modal-close')) return
+    document.getElementById('modal').classList.remove('active')
+  }
+
+  function downloadZip() {
+    if (!currentJobId) return
+    window.open(`/api/banners/jobs/${currentJobId}/download`, '_blank')
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal()
+  })
+</script>
+</body>
+</html>

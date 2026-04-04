@@ -116,9 +116,14 @@ app.delete('/api/sessions/:id', (req, res) => {
 const agentRoutes = require('./routes/agent-routes')
 app.use('/api/agent', agentRoutes)
 
+// ── Banner Generation Routes ─────────────────────────
+const bannerRoutes = require('./routes/banner-routes')
+app.use('/api/banners', bannerRoutes)
+
 // ── Start ──────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n  Design Feedback Tool + EC商品企画AIチーム`)
   console.log(`  http://localhost:${PORT}`)
-  console.log(`  http://localhost:${PORT}/agent.html\n`)
+  console.log(`  http://localhost:${PORT}/agent.html`)
+  console.log(`  http://localhost:${PORT}/banner.html\n`)
 })
