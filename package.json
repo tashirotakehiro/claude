@@ -1,7 +1,7 @@
 {
-  "name": "design-feedback",
+  "name": "ec-product-planning",
   "version": "1.0.0",
-  "description": "デザインフィードバック共有ツール + EC商品企画AIチーム",
+  "description": "EC商品企画AIチーム",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"
@@ -9,7 +9,6 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "dotenv": "^16.4.7",
-    "express": "^4.18.2",
-    "multer": "^1.4.5-lts.1"
+    "express": "^4.18.2"
   }
 }
