@@ -9,6 +9,7 @@
 | [strategy.md](./strategy.md) | 市場分析・ポジショニング・価格戦略・収益計画・コンテンツ拡張戦略 | 意思決定の土台。四半期ごとに見直す |
 | [persona.md](./persona.md) | 発信者の人格設定・口調ルール | **Claudeに毎回渡すコンテキスト** |
 | [canon.md](./canon.md) | 正典: 登場人物・年表・固定数字・エピソードストック・使用ログ | **Claudeに毎回渡すコンテキスト**。エピソードの唯一の供給源 |
+| [product-design.md](./product-design.md) | 商品設計: 根幹note3本×パターンnote刊行ライン、稟議五類型、目次・発売カレンダー | note企画・執筆開始時に参照。新企画はまずここに書く |
 | [note-writing-rules.md](./note-writing-rules.md) | note記事の構成・描写・課金ラインのルール | **note執筆時にClaudeに渡すコンテキスト** |
 | [x-operation-rules.md](./x-operation-rules.md) | X運用ルール・投稿の型・ローンチ手順・炎上予防 | **X投稿生成時にClaudeに渡すコンテキスト** |
 
