@@ -1,6 +1,6 @@
 # 事業モデル（商品企画スキル共通コンテキスト）
 
-商品企画系スキル（demand-research / product-idea / idea-kill-test / market-research / product-planning）は、このファイルを前提知識として最初に読むこと。
+商品企画系スキル（demand-research / product-idea / idea-judgment / market-research / product-planning）は、このファイルを前提知識として最初に読むこと。
 
 ## ビジネスモデル
 - D2C EC。SNS広告（Instagram/TikTokのフィード・リール広告）→ LP → 購入の直販モデル
@@ -38,8 +38,8 @@
 4. **クラファン実績**: 類似テーマの調達額・支援者数
 - 上記のCPC/CVR目安を試算に使う場合は、TikTok Creative Center等の公開ベンチマークと「同カテゴリで実際に回っている広告の存在」で裏を取る。**裏の取れない定数だけの試算は「未検証」と明記する**
 
-## 共通キル基準（idea-kill-test / market-research で使用）
-**二段階の役割分担**: idea-kill-test＝反証可能な主張の白黒を安く付けるフィルタ。market-research フェーズA＝グレーの解消と定量化。**同じ軸を同じ証拠で二度裁かない。**
+## 共通キル基準（idea-judgment / market-research で使用）
+**二段階の役割分担**: idea-judgment＝反証可能な主張の白黒を安く付けるフィルタ。market-research フェーズA＝グレーの解消と定量化。**同じ軸を同じ証拠で二度裁かない。**
 
 以下のいずれかに該当し、**証拠付きの反証**ができない場合はNo-Goとする:
 1. Amazon/楽天で¥3,000以下の類似品が検索上位にあり、その低評価レビューに攻め筋（明確な不満）がない
