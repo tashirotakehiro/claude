@@ -68,7 +68,12 @@
 - マーケ調査時点では、フェーズB④の必須/＋α/要議論をこの表に仮置きしてよい（確定は後工程の商品設計）。
 
 ## 作成・書き込み手順
-1. **複製**: `notion-duplicate-page`（page_id=`20db9edd0d82806fb451e1a6dc188ebe`）で複製する。複製先の親はプロジェクトDBのまま。複製は**非同期**なので、直後は内容が空の場合がある。`notion-fetch` で新ページの本文が揃うまで確認してから書き込む。
+1. **作成（テンプレを"行"として生成）**: `notion-create-pages` で作る。
+   - `parent` は必ず **`{type:"data_source_id", data_source_id:"174b9edd-0d82-815d-a28c-000b1b069e30"}`**（＝プロジェクトDBの行として作成される）
+   - `pages[0].template_id` に **`20db9edd0d82806fb451e1a6dc188ebe`**（テンプレ「【新商品】企画段階定型」）を指定し、テンプレのレイアウト（見出し・トグル・表）を適用する。`content` は渡さない（template_id が本文を供給する）
+   - `pages[0].properties.プロジェクト名` に企画名を入れる
+   - ⚠️ **`notion-duplicate-page` は使わない**。テンプレページを duplicate するとコピーも「DBのテンプレート」として作られ（Notion UIに「テンプレートを編集しています」と出る）、**DBの行一覧に現れない**。必ず上記の create-pages + template_id で"行"として作ること。
+   - template_id の適用は**非同期**なので、直後は本文が空のことがある。`notion-fetch` で本文（見出し・`<empty-block/>`）が揃ってから書き込む。
 2. **プロパティ設定**: `notion-update-page` の `update_properties` で以下を必ず設定する（複製直後に1回）:
    - `プロジェクト名` ＝ 企画名
    - `分類` ＝ `新商品`（select）
