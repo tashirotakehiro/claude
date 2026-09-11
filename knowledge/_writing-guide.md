@@ -2,7 +2,7 @@
 title: "書き手向け規約（knowledge/）"
 kind: "guide"
 owner: "backoffice"
-verified: "2026-09-08"
+verified: "2026-09-11"
 sources:
   - "本ディレクトリの設計方針（knowledge/ を追加した PR の説明を参照）"
 ---
@@ -29,7 +29,7 @@ sources:
 title: "CALQS（カルクス）"
 kind: "brand"            # index | guide | facts | principles | brand | reference
 owner: "marketing"       # backoffice | logistics | marketing | product-development（個人名は書かない）
-verified: "2026-09-08"   # 本文の事実を一次ソースと照合した日（編集日ではない）
+verified: "2026-09-11"   # 本文の事実を一次ソースと照合した日（編集日ではない）
 sources:
   - "https://calqs-sleep.com（商品ページ・policies/refund-policy）"
   - "shopify: calqs.myshopify.com（shopify_read）"
@@ -55,7 +55,8 @@ confirmed_on: "2026-09-20"       # confirmed_by がある場合のみ
 | ファイル | 上限 |
 |---|---|
 | README.md | 3,500 |
-| catalog.md／calqs-pillows.md／survaq-store-products.md | 6,000 |
+| products/catalog.md／calqs-hot-pillow.md／calqs-double-pillow.md／calqs-others.md／survaq-store-products.md | 6,000 |
+| brands/calqs.md（制度3層を含む） | 5,500 |
 | sources.md | 2,500 |
 | _writing-guide.md（雛形・定型文を含む） | 5,000 |
 | その他 | 4,000 |
@@ -82,7 +83,7 @@ commit メッセージの先頭にタグを1つ付ける。PR テンプレは作
 ## 9. commit 前チェック（2本。ヒットは目で確認する）
 ```
 grep -rnE "仕入先|メーカー名|粗利率|原価内訳|token|secret|password|xoxb-" knowledge/
-grep -rnE "[0-9０-９,]+件|[0-9]+位|ROAS [0-9]|売上高" knowledge/ --exclude=_writing-guide.md
+LC_ALL=C.UTF-8 grep -rnP "\d[\d,]*件|\d+位|ROAS \d|売上高" knowledge/ --exclude=_writing-guide.md
 ```
 
 ## 10. 読者への届け方（README「読者別の取得方法」の詳細）
@@ -110,7 +111,7 @@ grep -rnE "[0-9０-９,]+件|[0-9]+位|ROAS [0-9]|売上高" knowledge/ --exclud
 **FAQ・保証** トライアル条件／保証／よくある質問／表現上の注意
 **出典・確認履歴** YYYY-MM-DD 役割: 何を何と突合したか
 ```
-記入例は products/calqs-pillows.md の先頭カルテを実例として使う。
+記入例は products/calqs-hot-pillow.md の先頭カルテ（PH01）を実例として使う。
 
 ## 出典
-- 設計時の調査（2026-09-08）: リポジトリ内の参照関係、Notion「ナレッジ・ドキュメント（マニュアル）」の構成、survaq-mcp のツール群
+- 設計時の調査（2026-09-08〜11）: リポジトリ内の参照関係、Notion「ナレッジ・ドキュメント（マニュアル）」の構成、survaq-mcp のツール群
