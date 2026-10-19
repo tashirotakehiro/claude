@@ -14,6 +14,8 @@ NG が1つでもあれば終了コード1。NG を直してから Notion に書�
 - 入れ子: 親から数えて 2 段より深いのは NG
 - 本文に注記・出典・確信度を書かない (「根拠・出典」トグルの中だけ許す)
 - 1-1 は表、6 は2行まで、13 は「最終判定：」が空欄で、3つの問いに YES/NO が付いている
+- 「なぜ売れそうか」の子の行は、根拠のページへのリンク [表示文字](URL) を必ず含む
+  (商品企画の企画ページ用。agent-workspace 側のコピーには無いチェック)
 """
 import re
 import sys
@@ -38,6 +40,7 @@ def main(path: str) -> int:
     section = group = None
     top_count, in_evidence = {}, False
     section_lines = {}
+    why_open, why_children = False, 0
     bullet_tabs = [len(l) - len(l.lstrip("\t")) for l in lines if l.lstrip("\t").startswith(("- ", "1. "))]
     base = min(bullet_tabs) if bullet_tabs else 0
 
@@ -52,6 +55,9 @@ def main(path: str) -> int:
                 in_evidence = False
             continue
         if body.startswith("### "):
+            if why_open and why_children == 0:
+                ng.append(f"[{(section or '')[:12]}] 「なぜ売れそうか」に根拠の行が無い")
+            why_open = False
             section = group = body[4:].strip()
             top_count[section] = 0
             section_lines[section] = []
@@ -78,6 +84,14 @@ def main(path: str) -> int:
         if is_bullet:
             depth = tabs - base
             if depth == 0:
+                if why_open and why_children == 0:
+                    ng.append(f"{where} 「なぜ売れそうか」に根拠の行が無い")
+                why_open, why_children = text.startswith("なぜ売れそうか"), 0
+            elif why_open and depth == 1:
+                why_children += 1
+                if not re.search(r"\]\(https?://[^)]+\)", body):
+                    ng.append(f"{where} 「なぜ売れそうか」の根拠にリンクが無い: {text[:30]}")
+            if depth == 0:
                 top_count[group] += 1
             if depth >= 2 and not body.startswith("![") :
                 ng.append(f"{where} 入れ子が {depth + 1} 段目 (2段まで): {text[:30]}")
@@ -89,6 +103,8 @@ def main(path: str) -> int:
             if b in body:
                 ng.append(f"{where} 本文に「{b}」(根拠・出典トグルへ移す): {text[:30]}")
 
+    if why_open and why_children == 0:
+        ng.append(f"[{(section or '')[:12]}] 「なぜ売れそうか」に根拠の行が無い")
     for sec, n in top_count.items():
         if n > MAX_TOP:
             ng.append(f"[{sec[:12]}] 親項目が {n} 個 (上限 {MAX_TOP})。補足は子に、根拠はトグルへ")
